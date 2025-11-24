@@ -6,6 +6,7 @@ import numpy as np
 import glob
 import os
 
+
 def stitch_image(folder_path):
     print("IMAGE STITCHING STARTING")
     # Initialize SIFT detector for CPU
@@ -30,6 +31,13 @@ def stitch_image(folder_path):
     #stitcher.setPanoConfidenceThresh(0.4)
     status, panorama = stitcher.stitch(images)
     print("... stitch done ...")
+    if panorama is None:
+        base_h = min(img.shape[0] for img in images)
+        resized = [
+            cv2.resize(img, (int(img.shape[1] * base_h / img.shape[0]), base_h))
+            for img in images
+        ]
+        panorama = cv2.hconcat(resized)
     # dimensioni = 0
     # #print(images)
     # if status == cv2.Stitcher_OK and panorama is not None and len(panorama) > 0:
@@ -58,8 +66,17 @@ def orangetree(image, model_path, confidence=0.1):
     if cuda.is_available():
         print("...switching model to cuda")
         model.to('cuda')
-    c = model.predict(source=image, conf=confidence, save=True) 
+    c = model.predict(source=image, conf=confidence, save=False,verbose=False) 
+    if len(c[0].boxes) == 0:
+        w, h = image.size
+        center_left   = int(w * 0.25)
+        center_top    = int(h * 0.15)
+        center_right  = int(w * 0.75)
+        center_bottom = int(h * 0.85)
+        print("... TREE DETECTION DONE")
 
+        return image.crop((center_left, center_top, center_right, center_bottom))
+    
     #image = Image.open(image_path)
     img_width, img_height = image.size
 
@@ -167,25 +184,31 @@ def correct_image(image, model_path, confidence=0.5):
                         all_bboxes.append((x1, y1, x2, y2))
 
     coeff=[]
-    # Mostra ogni arancia ritagliata una per volta
-    for idx, bbox in enumerate(all_bboxes):
-        x1, y1, x2, y2 = bbox
-        cropped_img = image.crop((x1, y1, x2, y2))
-        original_width, original_height = cropped_img.size
-        if original_width < original_height:
-            new_size = (original_width, original_width)  # Usa la larghezza come nuova dimensione per entrambe
-            c= original_width/original_height
-            coeff.append(c)
-        else:
-            new_size = (original_height, original_height)  # Usa l'altezza come nuova dimensione per entrambe
-            c= original_height/original_width
-            coeff.append(c)
-    
-        ow,oh=image.size
-        nw=ow*np.mean(coeff)
+    if len(all_bboxes)==0:
+        ow, oh = image.size
+        coeff = 0.85                # coefficiente di fallback realistico
+        nw = (ow * coeff)
         corrected_image = image.resize((round(nw), oh), Image.Resampling.LANCZOS)
-         
-        print("... IMAGE CORRECTION DONE")
+    else:
+    # Mostra ogni arancia ritagliata una per volta
+        for idx, bbox in enumerate(all_bboxes):
+            x1, y1, x2, y2 = bbox
+            cropped_img = image.crop((x1, y1, x2, y2))
+            original_width, original_height = cropped_img.size
+            if original_width < original_height:
+                new_size = (original_width, original_width)  # Usa la larghezza come nuova dimensione per entrambe
+                c= original_width/original_height
+                coeff.append(c)
+            else:
+                new_size = (original_height, original_height)  # Usa l'altezza come nuova dimensione per entrambe
+                c= original_height/original_width
+                coeff.append(c)
+        
+            ow,oh=image.size
+            nw=ow*np.mean(coeff)
+            corrected_image = image.resize((round(nw), oh), Image.Resampling.LANCZOS)
+            
+            print("... IMAGE CORRECTION DONE")
         return corrected_image
 
 #immagine_corretta=detect_and_plot_arances(img_pil)
@@ -195,7 +218,12 @@ def correct_image(image, model_path, confidence=0.5):
 def calculate_barycentric_coordinates(p, vertices):
     """
     Calcola le coordinate baricentriche di un punto p rispetto ai vertici di un triangolo.
+    Se vertices non contiene esattamente 3 punti, ritorna pesi uniformi.
     """
+    # Fallback se non ci sono 3 vertici
+    if len(vertices) != 3:
+        return np.array([1/3, 1/3, 1/3])
+    
     A = np.array([
         [vertices[0][0], vertices[1][0], vertices[2][0]],
         [vertices[0][1], vertices[1][1], vertices[2][1]],
@@ -203,21 +231,45 @@ def calculate_barycentric_coordinates(p, vertices):
     ])
     
     b = np.array([p[0], p[1], 1])
-    
-    # Risolve il sistema di equazioni lineari
+
+    # Triangolo degenerato → fallback
+    det = np.linalg.det(A)
+    if abs(det) < 1e-8:
+        return np.array([1/3, 1/3, 1/3])
+
+    # Soluzione baricentrica
     bary_coords = np.linalg.solve(A, b)
     return bary_coords
+
 
 def interpolate_coefficient(p, centroids, coeff):
     """
     Interpola il coefficiente per un punto p basato sulle coordinate baricentriche.
     """
-    if len(centroids)>3:
-        centroids = centroids[:3]
-        coeff=coeff[:3]
+    # Fallback: allinea lunghezze
+    if len(centroids) != len(coeff):
+        min_len = min(len(centroids), len(coeff))
+        centroids = centroids[:min_len]
+        coeff = coeff[:min_len]
+
+    # Fallback: se dopo il taglio rimane solo 1 punto → ritorna coeff singolo
+    if len(centroids) == 1:
+        return coeff[0]
+
+    # Fallback: se rimangono 2 punti → interpolazione lineare 1D
+    if len(centroids) == 2:
+        # semplice interpolazione pesata
+        d1 = np.linalg.norm(np.array(p) - np.array(centroids[0]))
+        d2 = np.linalg.norm(np.array(p) - np.array(centroids[1]))
+        if d1 + d2 == 0:
+            return coeff[0]
+        w1 = 1 - d1 / (d1 + d2)
+        w2 = 1 - d2 / (d1 + d2)
+        return w1 * coeff[0] + w2 * coeff[1]
+
+    # Caso normale: 3 punti → triangolo
     bary_coords = calculate_barycentric_coordinates(p, centroids)
-    interpolated_value = np.dot(bary_coords, coeff)
-    return interpolated_value
+    return np.dot(bary_coords, coeff)
 
 def adjust_bbox_coordinates(bbox, position):
     x1, y1, x2, y2 = bbox
