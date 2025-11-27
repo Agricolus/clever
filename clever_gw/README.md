@@ -105,13 +105,15 @@ The script modem_startup/upload_ssl.py is **not meant to be run standalone**. It
 
 ## Important Notes
 
-After each Raspberry Pi reboot, GPIO4 starts floating. This may randomly turn the modem on or off.  
+After each Raspberry Pi reboot, GPIO4 starts floating. This may randomly turn the modem on or off.
 
-Run the following once after boot to ensure a stable state:
+> **Note:** You only need to run the following command manually if you want to skip running the full workflow, which already handles power toggling automatically:
 
 
 `make power`
 
+
 ## Logging
 
 Log files are generated automatically via modem_logger.py.
+
