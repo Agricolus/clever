@@ -244,32 +244,40 @@ def calculate_barycentric_coordinates(p, vertices):
 
 def interpolate_coefficient(p, centroids, coeff):
     """
-    Interpola il coefficiente per un punto p basato sulle coordinate baricentriche.
+    Interpola il coefficiente per un punto p usando sempre i 3 punti più vicini.
+    È robusta e non genera errori di shape.
     """
-    # Fallback: allinea lunghezze
-    if len(centroids) != len(coeff):
-        min_len = min(len(centroids), len(coeff))
-        centroids = centroids[:min_len]
-        coeff = coeff[:min_len]
+    centroids = np.array(centroids)
+    coeff = np.array(coeff)
 
-    # Fallback: se dopo il taglio rimane solo 1 punto → ritorna coeff singolo
+    # Se non ci sono punti → ritorna 0
+    if len(centroids) == 0:
+        return 0
+
+    # Se c'è un punto solo → coeff costante
     if len(centroids) == 1:
         return coeff[0]
 
-    # Fallback: se rimangono 2 punti → interpolazione lineare 1D
+    # Se ci sono due punti → interpolazione lineare
     if len(centroids) == 2:
-        # semplice interpolazione pesata
-        d1 = np.linalg.norm(np.array(p) - np.array(centroids[0]))
-        d2 = np.linalg.norm(np.array(p) - np.array(centroids[1]))
+        d1 = np.linalg.norm(np.array(p) - centroids[0])
+        d2 = np.linalg.norm(np.array(p) - centroids[1])
         if d1 + d2 == 0:
             return coeff[0]
         w1 = 1 - d1 / (d1 + d2)
         w2 = 1 - d2 / (d1 + d2)
         return w1 * coeff[0] + w2 * coeff[1]
 
-    # Caso normale: 3 punti → triangolo
-    bary_coords = calculate_barycentric_coordinates(p, centroids)
-    return np.dot(bary_coords, coeff)
+    # Caso generale: usa sempre i 3 punti più vicini
+    distances = np.linalg.norm(centroids - np.array(p), axis=1)
+    idx = np.argsort(distances)[:3]  # prendi i 3 punti più vicini
+
+    tri_centroids = centroids[idx]
+    tri_coeffs = coeff[idx]
+
+    bary_coords = calculate_barycentric_coordinates(p, tri_centroids)
+
+    return np.dot(bary_coords, tri_coeffs)
 
 def adjust_bbox_coordinates(bbox, position):
     x1, y1, x2, y2 = bbox
