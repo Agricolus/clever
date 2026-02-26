@@ -12,6 +12,7 @@ import modem_initializer
 import tcp_test
 import modem_logger
 import http_test
+import ping_test
 
 # ANSI color codes
 GREEN = "\033[32m"
@@ -29,6 +30,7 @@ for attempt in range(1, MAX_RETRIES + 1):
         if TCP_CONTEXT_ID is None:
             print(f"{RED}PDP activation failed. Skipping the workflow.{RESET}")
             sys.exit(1)
+        ping_test.main()
         tcp_test.main_workflow(TCP_CONTEXT_ID)
         http_test.main()
         break  # success, exit loop
