@@ -18,6 +18,12 @@ Mahdi.mohammadi@cortus.com
 | Initial
 | Initial version
 
+| 2026-02-24
+| MohammadMahdi Mohammadi
+|
+| V1
+| Added the ping test feature
+
 |===
 
 
@@ -229,6 +235,9 @@ The software has been organized into several Python scripts, each performing a s
 |modem_initializer.py
 |Performs modular initialization and status checking of the SIM7070G modem.
 
+|ping_test.py
+|Performs IPv4 ICMP ping tests, and retrieves the physical location of the target server.
+
 |tcp_test.py
 |Commands for testing TCP connection establishment.
 
@@ -260,6 +269,7 @@ It performs the following steps in order:
 
 * Toggles modem power using `modem_power.py`
 * Performs handshake and initialization using `modem_initializer.py`
+* Runs ping tests using `ping_test.py`
 * Runs TCP connection tests using `tcp_test.py`
 * Performs HTTP/HTTPS tests using `http_test.py`
 * Logs all actions using the helper module `modem_logger.py`
@@ -325,6 +335,26 @@ This script can be executed through the Makefile using:
 make init
 ----
 
+=== ping_test.py — IPv4 ICMP Connectivity Test
+
+The ping_test.py module provides a workflow based on the SIMCOM ping application note for testing IPv4 ICMP connectivity using the active PDP context established with the modem_initializer.py module. This script allows the user to verify basic IP reachability and measure network latency before performing higher-level TCP or HTTP(S) tests.
+
+Key features of this module include:
+
+* Prompts the user to enter a target IPv4 address or use a predefined default server.
+
+* Retrieves and displays the physical location (city, region, country, ISP) of the target server using an external IP geolocation service.
+
+* Sends ICMP Echo Requests using the AT+SNPING4 command through the active PDP context.
+
+* Collects and displays per-packet delay measurements.
+
+* Calculates and reports transmitted, received, and lost packets.
+
+* Logs modem commands and responses for debugging purposes.
+
+This module is intended to confirm basic IP connectivity and latency performance, validating the modem, SIM card, APN configuration, and network attachment before proceeding to TCP or HTTP(S) communication tests.
+
 === tcp_test.py — TCP Connectivity Test
 
 The `tcp_test.py` module provides a workflow based on the SIMCOM TCP application note for testing TCP connectivity using the active PDP context established with the `modem_initializer.py` module. This script allows the user to verify that the modem can successfully open a TCP connection, send data, and receive responses, essential for the next step which is HTTP(S) testing.
@@ -334,8 +364,6 @@ Key features of this module include:
 * Prompts the user to select a TCP test server, either a predefined public echo server "tcpbin.com" or a custom server specified by the user.
 * Opens a TCP connection using the active PDP context obtained during modem initialization (when executed standalone, the user must provide a valid PDP context ID).
 * Sends a small test payload and optionally waits to receive echoed data, to verify that the data path is operational.
-* Handles connection retries and reports failures.
-* Closes the TCP connection to release network resources.
 * Logs modem commands and responses for debugging purposes.
 
 This module is intended to confirm data connectivity, validating the modem, SIM card, APN configuration, and network attachment functionality.
@@ -612,5 +640,15 @@ If `ERROR` → invalid connection ID or buffer empty.
 | Delete certificate from SSL storage
 | Not executed directly in script, but referenced in warning.
   Necessary when conversion fails due to existing certificate.
+
+| AT+SNPING4="<ip>",<count>,<size>,<timeout>
+| Sends IPv4 ICMP Echo Requests (Ping) using the active PDP context
+| Successful replies include:
++SNPING4: <seq>,<ip>,<delay>
+followed by OK
+If it returns:
+* +SNPING4: <seq>,<ip>,-1 → Request timeout (no reply received)
+* ERROR → AT syntax error or invalid parameters
+* +CME ERROR: <code> → PDP context not active, network issue, or SIM/configuration problem
 
 |===
