@@ -84,7 +84,7 @@ See all available Make targets:
 
 ## Full Modem Workflow
 
-The complete workflow (power toggle → initialization → TCP test → HTTP/HTTPS test) can be run with:
+The complete workflow (power toggle → initialization → PING test → TCP test → HTTP/HTTPS test) can be run with:
 
 
 `make workflow`
@@ -119,3 +119,4 @@ After each Raspberry Pi reboot, GPIO4 starts floating. This may randomly turn th
 
 
 Log files are generated automatically via modem_logger.py.
+
