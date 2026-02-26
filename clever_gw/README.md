@@ -95,6 +95,7 @@ Run the following commands from the root folder:
 
     make power     # Toggle modem power via GPIO4 -> PWRKEY
     make init      # Perform handshake + initialization
+    make ping      # PING test
     make tcp       # TCP connection test
     make http      # HTTP/HTTPS GET/POST tests
 
@@ -115,5 +116,6 @@ After each Raspberry Pi reboot, GPIO4 starts floating. This may randomly turn th
 
 
 ## Logging
+
 
 Log files are generated automatically via modem_logger.py.
