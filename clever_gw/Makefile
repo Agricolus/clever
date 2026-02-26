@@ -11,6 +11,9 @@ power:
 init:
 	$(PYTHON) $(MODEM_SCRIPTS_DIR)/modem_initializer.py
 
+ping:
+	$(PYTHON) $(MODEM_SCRIPTS_DIR)/ping_test.py
+
 http:
 	$(PYTHON) $(MODEM_SCRIPTS_DIR)/http_test.py
 
@@ -36,6 +39,7 @@ help:
 	@echo "  $(GREEN)make workflow$(RESET)       - Run full modem workflow"
 	@echo "  $(GREEN)make power$(RESET)          - Toggle modem power"
 	@echo "  $(GREEN)make init$(RESET)           - Initialize modem"
+	@echo "  $(GREEN)make ping$(RESET)           - Run Ping test"
 	@echo "  $(GREEN)make tcp$(RESET)            - Run TCP test"
 	@echo "  $(GREEN)make http$(RESET)           - Run HTTP test"
 	@echo "  $(GREEN)make pdf$(RESET)            - Generate PDF from AsciiDoc"

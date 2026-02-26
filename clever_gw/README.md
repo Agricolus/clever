@@ -3,7 +3,7 @@
 This repository contains the full software and documentation required to operate and test the **SIM7070G NB-IoT modem** on a Raspberry Pi 4.
 
 It includes:
-- Python modules for powering, initializing, and testing the modem (TCP + HTTP/HTTPS)
+- Python modules for powering, initializing, and testing the modem (PING + TCP + HTTP/HTTPS)
 - SSL certificate uploader
 - Logging utilities
 - Complete documentation (.adoc + .pdf)
@@ -26,6 +26,7 @@ It includes:
     - modem_logger.py
     - modem_power.py
     - modem_workflow.py
+    - ping_test.py
     - tcp_test.py
     - upload_ssl.py
 
@@ -45,7 +46,7 @@ To generate the PDF from the AsciiDoc source:
 
 This will create or update the PDF document.
 
-> **Important:** If you are working with the hardware, you **must read this PDF**. It explains power sequencing, USB enumeration, GPIO behavior, and modem initialization flow.  
+> **Important:** If you are working with the hardware, you **must read this PDF**. It explains power sequencing, USB enumeration, GPIO behavior, and modem initialization flow.
 
 The .adoc source is also included in the repository.
 
@@ -116,4 +117,3 @@ After each Raspberry Pi reboot, GPIO4 starts floating. This may randomly turn th
 ## Logging
 
 Log files are generated automatically via modem_logger.py.
-
